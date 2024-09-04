@@ -32,15 +32,17 @@ package org.opensearch.hadoop.gradle.buildtools;
 import org.apache.rat.Defaults;
 import org.apache.rat.ReportConfiguration;
 import org.apache.rat.analysis.IHeaderMatcher;
-import org.apache.rat.analysis.util.HeaderMatcherMultiplexer;
-import org.apache.rat.anttasks.SubstringLicenseMatcher;
 import org.apache.rat.api.RatException;
+import org.apache.rat.config.AddLicenseHeaders;
 import org.apache.rat.document.impl.FileDocument;
+import org.apache.rat.license.ILicenseFamily;
+import org.apache.rat.license.LicenseSetFactory;
 import org.apache.rat.license.SimpleLicenseFamily;
 import org.apache.rat.report.RatReport;
 import org.apache.rat.report.claim.ClaimStatistic;
 import org.apache.rat.report.xml.XmlReportFactory;
 import org.apache.rat.report.xml.writer.impl.base.XmlWriter;
+import org.apache.rat.utils.DefaultLog;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.FileCollection;
@@ -165,35 +167,35 @@ public abstract class LicenseHeadersTask extends DefaultTask {
 
     @TaskAction
     public void runRat() {
-        ReportConfiguration reportConfiguration = new ReportConfiguration();
-        reportConfiguration.setAddingLicenses(true);
-        List<IHeaderMatcher> matchers = new ArrayList<>();
-        matchers.add(Defaults.createDefaultMatcher());
+        ReportConfiguration reportConfiguration = new ReportConfiguration(DefaultLog.INSTANCE);
+        reportConfiguration.setAddLicenseHeaders(AddLicenseHeaders.TRUE);
 
-        // BSD 4-clause stuff (is disallowed below)
-        // we keep this here, in case someone adds BSD code for some reason, it should never be allowed.
-        matchers.add(subStringMatcher("BSD4 ", "Original BSD License (with advertising clause)", "All advertising materials"));
-        // Apache
-        matchers.add(subStringMatcher("AL   ", "Apache", "Licensed to Elasticsearch B.V. under one or more contributor"));
-        // Generated resources
-        matchers.add(subStringMatcher("GEN  ", "Generated", "ANTLR GENERATED CODE"));
-        // Vendored Code
-        matchers.add(subStringMatcher("VEN  ", "Vendored", "@notice"));
-        // Dual SSPLv1 and Elastic
-        matchers.add(subStringMatcher("DUAL", "SSPL+Elastic License", "the Elastic License 2.0 or the Server"));
+        List<ILicenseFamily> licenseFamilies = new ArrayList<>(Defaults
+                .builder()
+                .build()
+                .getLicenseFamilies(LicenseSetFactory.LicenseFilter.all));
 
-        for (Map.Entry<String, String> additional : additionalLicenses.entrySet()) {
-            String category = additional.getKey().substring(0, 5);
-            String family = additional.getKey().substring(5);
-            matchers.add(subStringMatcher(category, family, additional.getValue()));
-        }
+//        // BSD 4-clause stuff (is disallowed below)
+//        // we keep this here, in case someone adds BSD code for some reason, it should never be allowed.
+//        matchers.add(subStringMatcher("BSD4 ", "Original BSD License (with advertising clause)", "All advertising materials"));
+//        // Apache
+//        matchers.add(subStringMatcher("AL   ", "Apache", "Licensed to Elasticsearch B.V. under one or more contributor"));
+//        // Generated resources
+//        matchers.add(subStringMatcher("GEN  ", "Generated", "ANTLR GENERATED CODE"));
+//        // Vendored Code
+//        matchers.add(subStringMatcher("VEN  ", "Vendored", "@notice"));
+//        // Dual SSPLv1 and Elastic
+//        matchers.add(subStringMatcher("DUAL", "SSPL+Elastic License", "the Elastic License 2.0 or the Server"));
+//
+//        for (Map.Entry<String, String> additional : additionalLicenses.entrySet()) {
+//            String category = additional.getKey().substring(0, 5);
+//            String family = additional.getKey().substring(5);
+//            matchers.add(subStringMatcher(category, family, additional.getValue()));
+//        }
 
-        reportConfiguration.setHeaderMatcher(new HeaderMatcherMultiplexer(matchers));
-        reportConfiguration.setApprovedLicenseNames(approvedLicenses.stream().map(license -> {
-            SimpleLicenseFamily simpleLicenseFamily = new SimpleLicenseFamily();
-            simpleLicenseFamily.setFamilyName(license);
-            return simpleLicenseFamily;
-        }).toArray(SimpleLicenseFamily[]::new));
+        reportConfiguration.addFamilies(licenseFamilies);
+
+        reportConfiguration.addApprovedLicenseCategories(approvedLicenses);
 
         ClaimStatistic stats = generateReport(reportConfiguration, getReportFile());
         boolean unknownLicenses = stats.getNumUnknown() > 0;
@@ -205,16 +207,16 @@ public abstract class LicenseHeadersTask extends DefaultTask {
         }
     }
 
-    private IHeaderMatcher subStringMatcher(String licenseFamilyCategory, String licenseFamilyName, String substringPattern) {
-        SubstringLicenseMatcher substringLicenseMatcher = new SubstringLicenseMatcher();
-        substringLicenseMatcher.setLicenseFamilyCategory(licenseFamilyCategory);
-        substringLicenseMatcher.setLicenseFamilyName(licenseFamilyName);
-
-        SubstringLicenseMatcher.Pattern pattern = new SubstringLicenseMatcher.Pattern();
-        pattern.setSubstring(substringPattern);
-        substringLicenseMatcher.addConfiguredPattern(pattern);
-        return substringLicenseMatcher;
-    }
+//    private IHeaderMatcher subStringMatcher(String licenseFamilyCategory, String licenseFamilyName, String substringPattern) {
+//        SubstringLicenseMatcher substringLicenseMatcher = new SubstringLicenseMatcher();
+//        substringLicenseMatcher.setLicenseFamilyCategory(licenseFamilyCategory);
+//        substringLicenseMatcher.setLicenseFamilyName(licenseFamilyName);
+//
+//        SubstringLicenseMatcher.Pattern pattern = new SubstringLicenseMatcher.Pattern();
+//        pattern.setSubstring(substringPattern);
+//        substringLicenseMatcher.addConfiguredPattern(pattern);
+//        return substringLicenseMatcher;
+//    }
 
     private ClaimStatistic generateReport(ReportConfiguration config, File xmlReportFile) {
         try {
