@@ -31,6 +31,7 @@ package org.opensearch.hadoop.rest;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.util.Objects;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.opensearch.hadoop.OpenSearchHadoopException;
@@ -364,7 +365,7 @@ public abstract class InitializationUtils {
                         mainInfo.getClusterName().getName(),
                         clusterName));
             }
-            if (mainInfo.getClusterName().getUUID().equals(clusterUUID) == false) {
+            if (!Objects.equals(mainInfo.getClusterName().getUUID(), clusterUUID)) {
                 log.warn(String.format(
                         "Discovered incorrect cluster UUID in settings. Expected [%s] but received [%s]; replacing...",
                         mainInfo.getClusterName().getUUID(),

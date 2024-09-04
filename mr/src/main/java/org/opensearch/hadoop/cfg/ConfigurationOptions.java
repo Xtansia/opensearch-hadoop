@@ -341,4 +341,5 @@ public interface ConfigurationOptions {
 
     String OPENSEARCH_AWS_SIGV4_SERVICE_NAME = "opensearch.aws.sigv4.service.name";
     String OPENSEARCH_AWS_SIGV4_SERVICE_NAME_DEFAULT = "es";
+    String OPENSEARCH_AWS_SIGV4_SERVICE_NAME_AOSS = "aoss";
 }

@@ -95,6 +95,7 @@ public class RestClient implements Closeable, StatsAware {
     private final HttpRetryPolicy retryPolicy;
     final ClusterInfo clusterInfo;
     private final ErrorExtractor errorExtractor;
+    private final boolean isAwsServerless;
 
     {
         mapper = new ObjectMapper();
@@ -130,6 +131,7 @@ public class RestClient implements Closeable, StatsAware {
         // already present in the settings
         this.clusterInfo = settings.getClusterInfoOrUnnamedLatest();
         this.errorExtractor = new ErrorExtractor();
+        this.isAwsServerless = ConfigurationOptions.OPENSEARCH_AWS_SIGV4_SERVICE_NAME_AOSS.equals(settings.getAwsSigV4ServiceName());
     }
 
     public List<NodeInfo> getHttpNodes(boolean clientNodeOnly) {
@@ -296,6 +298,10 @@ public class RestClient implements Closeable, StatsAware {
     }
 
     public void refresh(Resource resource) {
+        if (this.isAwsServerless) {
+            return;
+        }
+
         execute(POST, resource.refresh());
     }
 
@@ -717,6 +723,10 @@ public class RestClient implements Closeable, StatsAware {
     }
 
     public ClusterInfo mainInfo() {
+        if (this.isAwsServerless) {
+            return new ClusterInfo(new ClusterName("Amazon OpenSearch Serverless", null), OpenSearchMajorVersion.V_2_X);
+        }
+
         Response response = execute(GET, "", true);
         Map<String, Object> result = parseContent(response.body(), null);
         if (result == null) {
@@ -747,6 +757,10 @@ public class RestClient implements Closeable, StatsAware {
     }
 
     public Health getHealth(String index) {
+        if (this.isAwsServerless) {
+            return Health.GREEN;
+        }
+
         StringBuilder sb = new StringBuilder("/_cluster/health/");
         sb.append(index);
         String status = get(sb.toString(), "status");
@@ -758,6 +772,10 @@ public class RestClient implements Closeable, StatsAware {
     }
 
     public boolean waitForHealth(String index, Health health, TimeValue timeout) {
+        if (this.isAwsServerless) {
+            return false;
+        }
+
         StringBuilder sb = new StringBuilder("/_cluster/health/");
         sb.append(index);
         sb.append("?wait_for_status=");
